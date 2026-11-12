@@ -1,0 +1,51 @@
+@model HomeViewModel
+@{
+    ViewData["Title"] = "Início";
+    var gestao = User.IsInRole("Gestor") || User.IsInRole("Administrador");
+}
+
+@if (Model.Erro is not null)
+{
+    <div class="alert alert-danger" role="alert">@Model.Erro</div>
+}
+
+<div class="row">
+    <div class="col-md-6 col-xl-4">
+        <div class="card card-animate">
+            <div class="card-body">
+                <p class="fw-medium text-muted mb-0">Produtos cadastrados</p>
+                <h2 class="mt-4 ff-secondary fw-semibold">@(Model.TotalProdutos ?? "—")</h2>
+                <a asp-controller="Produtos" asp-action="Index" class="text-decoration-underline">Ver produtos</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-4">
+        <div class="card card-animate">
+            <div class="card-body">
+                <p class="fw-medium text-muted mb-0">Saldos em estoque (produto × depósito)</p>
+                <h2 class="mt-4 ff-secondary fw-semibold">@(Model.TotalSaldos ?? "—")</h2>
+                <a asp-controller="Estoque" asp-action="Index" class="text-decoration-underline">Ver estoque</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-12 col-xl-4">
+        <div class="card">
+            <div class="card-body">
+                <p class="fw-medium text-muted mb-2">Você</p>
+                <h5 class="mb-1">@Model.Nome</h5>
+                <span class="badge bg-primary-subtle text-primary">@Model.Perfil</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title mb-3">Ações rápidas</h5>
+        <a asp-controller="Estoque" asp-action="Movimentar" class="btn btn-primary me-2"><i class="ri-arrow-left-right-line align-bottom me-1"></i> Movimentar estoque</a>
+        @if (gestao)
+        {
+            <a asp-controller="Produtos" asp-action="Novo" class="btn btn-soft-success"><i class="ri-add-line align-bottom me-1"></i> Novo produto</a>
+        }
+    </div>
+</div>

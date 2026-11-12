@@ -6,3 +6,6 @@ node_modules/
 .env
 appsettings.*.local.json
 TestResults/
+
+# Tema Velzon é comercial: não versionar. Use tools/copiar-assets-velzon.ps1
+src/Web/wwwroot/assets/

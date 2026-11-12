@@ -1,0 +1,48 @@
+@model MovimentarViewModel
+@{
+    ViewData["Title"] = "Movimentar estoque";
+}
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-body">
+                <partial name="_Erros" />
+                <form asp-action="Movimentar" method="post" novalidate>
+                    <input type="hidden" asp-for="ChaveIdempotencia" />
+
+                    <div class="mb-3">
+                        <label asp-for="ProdutoId" class="form-label">Produto</label>
+                        <select asp-for="ProdutoId" asp-items="Model.Produtos" class="form-select">
+                            <option value="">Selecione...</option>
+                        </select>
+                        <span asp-validation-for="ProdutoId" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="DepositoId" class="form-label">Depósito</label>
+                        <select asp-for="DepositoId" asp-items="Model.Depositos" class="form-select"></select>
+                        <span asp-validation-for="DepositoId" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Tipo" class="form-label">Tipo</label>
+                        <select asp-for="Tipo" class="form-select">
+                            <option value="Entrada">Entrada</option>
+                            <option value="Saida">Saída</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Quantidade" class="form-label"></label>
+                        <input asp-for="Quantidade" type="text" inputmode="decimal" class="form-control" placeholder="Ex.: 10 ou 2,5" />
+                        <span asp-validation-for="Quantidade" class="text-danger"></span>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Registrar</button>
+                    <a asp-action="Index" class="btn btn-light">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

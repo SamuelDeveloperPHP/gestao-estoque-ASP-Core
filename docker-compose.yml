@@ -26,10 +26,22 @@ services:
       Swagger__Enabled: "true" # só local
       ConnectionStrings__Postgres: "Host=postgres;Database=gestao_estoque;Username=estoque;Password=${POSTGRES_PASSWORD}"
       Jwt__Key: ${JWT_KEY:?defina JWT_KEY no .env (mínimo 32 caracteres)}
+      ForwardedHeaders__Enabled: "true" # confia no IP repassado pelo Web; a API só escuta em localhost
       Identidade__AdminEmail: ${ADMIN_EMAIL:?defina ADMIN_EMAIL no .env}
       Identidade__AdminSenha: ${ADMIN_PASSWORD:?defina ADMIN_PASSWORD no .env}
     ports:
       - "127.0.0.1:8080:8080"
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    depends_on:
+      - api
+    environment:
+      Api__BaseUrl: "http://api:8080"
+    ports:
+      - "127.0.0.1:8081:8080"
 
 volumes:
   pgdata:

@@ -11,7 +11,8 @@ src/
     Identidade/          usuários e perfis (JWT/OIDC: próxima etapa)
     Catalogo/            produtos e SKU
     Estoque/             saldos e movimentações (schema "estoque")
-  Api/                   host REST (/api/v1), health checks
+  Api/                   host REST (/api/v1), health checks, Swagger
+  Web/                   UI MVC com tema Velzon; consome a API (login por cookie + JWT)
 tests/
   Estoque.Domain.Tests   regras de domínio
   Estoque.Arch.Tests     módulos não podem depender uns dos outros
@@ -25,13 +26,28 @@ Integração entre módulos: eventos de domínio (futuro: Outbox + RabbitMQ).
 
 SDK do .NET 8, Docker, Git. IDE: Visual Studio 2022, Rider ou VS Code (C# Dev Kit).
 
+## Tema Velzon (Web)
+
+O Velzon é um tema comercial e **não é versionado** (`src/Web/wwwroot/assets` está no `.gitignore`).
+Com a sua licença, copie os arquivos necessários:
+
+```powershell
+./tools/copiar-assets-velzon.ps1 -Origem "C:\caminho\do\projeto\Velzon"
+```
+
+Sem os assets o Web funciona, mas sem estilo.
+
 ## Rodando
 
 ```bash
-cp .env.example .env   # defina POSTGRES_PASSWORD
+cp .env.example .env   # preencha os valores
 docker compose up --build
-curl http://localhost:8080/health/ready
 ```
+
+- UI: http://localhost:8081 (entre com `ADMIN_EMAIL` / `ADMIN_PASSWORD` do `.env`)
+- API + Swagger: http://localhost:8080/swagger
+
+Depósitos da UI vêm de `Depositos` no `appsettings.json` do Web (a API ainda não tem cadastro de depósitos).
 
 Testes: `dotnet test`
 
@@ -57,6 +73,6 @@ dotnet ef migrations add NomeDaMigration -p src/Modules/Estoque -s src/Api -o In
 
 ## Próximas etapas
 
-1. Autenticação JWT/OIDC no módulo Identidade e `[Authorize]` nos endpoints (hoje abertos).
-2. Persistência do Catálogo (validar `produtoId`) e testes de integração com Testcontainers no CI.
-3. Outbox + mensageria; OpenTelemetry; UI (template Velzon) consumindo a API.
+1. Cadastro de depósitos na API (hoje fixos na configuração do Web).
+2. Outbox + mensageria (RabbitMQ); OpenTelemetry.
+3. Persistir as chaves do Data Protection do Web (cookies sobrevivem a reinícios) e total de itens nas listagens.

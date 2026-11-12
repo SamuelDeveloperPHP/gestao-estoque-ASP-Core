@@ -1,0 +1,83 @@
+@model ProdutosIndexViewModel
+@{
+    ViewData["Title"] = "Produtos";
+    var gestao = User.IsInRole("Gestor") || User.IsInRole("Administrador");
+}
+
+@if (Model.Erro is not null)
+{
+    <div class="alert alert-danger" role="alert">@Model.Erro</div>
+}
+
+<div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <form method="get" class="d-flex gap-2">
+            <input type="search" name="busca" value="@Model.Busca" class="form-control" placeholder="Buscar por SKU ou nome" style="min-width:260px" />
+            <button type="submit" class="btn btn-soft-primary"><i class="ri-search-line align-bottom"></i> Buscar</button>
+        </form>
+        @if (gestao)
+        {
+            <a asp-action="Novo" class="btn btn-success"><i class="ri-add-line align-bottom me-1"></i> Novo produto</a>
+        }
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-nowrap align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>SKU</th>
+                        <th>Nome</th>
+                        <th>Unidade</th>
+                        <th>Situação</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Itens.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-center text-muted py-4">Nenhum produto encontrado.</td></tr>
+                }
+                @foreach (var p in Model.Itens)
+                {
+                    <tr>
+                        <td class="fw-medium">@p.Sku</td>
+                        <td>@p.Nome</td>
+                        <td>@p.Unidade</td>
+                        <td>
+                            @if (p.Ativo) { <span class="badge bg-success-subtle text-success">Ativo</span> }
+                            else { <span class="badge bg-secondary-subtle text-secondary">Inativo</span> }
+                        </td>
+                        <td class="text-end">
+                            @if (p.Ativo)
+                            {
+                                <a asp-controller="Estoque" asp-action="Movimentar" asp-route-produtoId="@p.Id" class="btn btn-sm btn-soft-primary">Movimentar</a>
+                            }
+                            @if (gestao && p.Ativo)
+                            {
+                                <form asp-action="Desativar" asp-route-id="@p.Id" method="post" class="d-inline"
+                                      onsubmit="return confirm('Desativar este produto?');">
+                                    <button type="submit" class="btn btn-sm btn-soft-danger">Desativar</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <span class="text-muted">Página @Model.Pagina</span>
+            <div class="btn-group">
+                @if (Model.Pagina > 1)
+                {
+                    <a asp-action="Index" asp-route-busca="@Model.Busca" asp-route-pagina="@(Model.Pagina - 1)" class="btn btn-light">Anterior</a>
+                }
+                @if (Model.TemProxima)
+                {
+                    <a asp-action="Index" asp-route-busca="@Model.Busca" asp-route-pagina="@(Model.Pagina + 1)" class="btn btn-light">Próxima</a>
+                }
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,10 @@
+@* Mostra os erros do modelo (ex.: mensagens vindas da API) só quando existirem. *@
+@if (ViewData.ModelState.TryGetValue("", out var entrada) && entrada.Errors.Count > 0)
+{
+    <div class="alert alert-danger" role="alert">
+        @foreach (var e in entrada.Errors)
+        {
+            <div>@e.ErrorMessage</div>
+        }
+    </div>
+}

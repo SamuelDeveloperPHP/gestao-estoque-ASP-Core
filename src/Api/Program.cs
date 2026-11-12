@@ -7,6 +7,7 @@ using GestaoEstoque.Modules.Estoque;
 using GestaoEstoque.Modules.Estoque.Api;
 using GestaoEstoque.Modules.Estoque.Application;
 using GestaoEstoque.Modules.Identidade;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using GestaoEstoque.Modules.Identidade.Api;
 using Microsoft.OpenApi.Models;
@@ -20,6 +21,19 @@ builder.Services
 
 // Composition root: liga a porta do Estoque ao contrato público do Catálogo.
 builder.Services.AddScoped<IVerificadorProduto, ProdutoCatalogoAdapter>();
+
+// Opt-in: só habilite quando um chamador confiável (ex.: o Web) envia o IP real em X-Forwarded-For
+// e a API NÃO está exposta diretamente; senão o cabeçalho pode ser forjado para burlar o rate limit.
+var confiarEmForwardedFor = builder.Configuration.GetValue<bool>("ForwardedHeaders:Enabled");
+if (confiarEmForwardedFor)
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(o =>
+    {
+        o.ForwardedHeaders = ForwardedHeaders.XForwardedFor;
+        o.KnownNetworks.Clear();
+        o.KnownProxies.Clear();
+    });
+}
 
 builder.Services.AddProblemDetails();
 builder.Services.AddResponseCompression();
@@ -61,6 +75,8 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 var app = builder.Build();
+
+if (confiarEmForwardedFor) app.UseForwardedHeaders();
 
 // Qualquer exceção inesperada: 500 sem vazar detalhes (e com log de erro).
 app.UseExceptionHandler(handler => handler.Run(async ctx =>
