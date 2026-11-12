@@ -1,0 +1,4 @@
+[*.cs]
+# Nomes de teste com underscore são intencionais (legibilidade).
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1861.severity = none

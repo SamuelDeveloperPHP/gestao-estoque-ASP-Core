@@ -1,0 +1,16 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY global.json Directory.Build.props GestaoEstoque.sln ./
+COPY src/ src/
+COPY tests/ tests/
+RUN dotnet restore GestaoEstoque.sln
+RUN dotnet publish src/Api/GestaoEstoque.Api.csproj -c Release -o /app --no-restore
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+COPY --from=build /app .
+# Imagem aspnet 8 já traz o usuário não-root "app".
+USER app
+ENV ASPNETCORE_HTTP_PORTS=8080
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "GestaoEstoque.Api.dll"]
