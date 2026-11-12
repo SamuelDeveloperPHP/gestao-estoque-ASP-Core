@@ -23,6 +23,8 @@ public static class EstoqueEndpoints
         grupo.MapPost("/movimentacoes", RegistrarAsync);
         grupo.MapGet("/saldos", ListarSaldosAsync);
 
+        app.MapDepositoEndpoints();
+
         return app;
     }
 

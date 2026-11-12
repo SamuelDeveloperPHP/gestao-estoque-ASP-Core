@@ -13,12 +13,6 @@ public sealed class ApiOptions
     public string BaseUrl { get; set; } = "";
 }
 
-public sealed class Deposito
-{
-    public Guid Id { get; set; }
-    public string Nome { get; set; } = "";
-}
-
 /// <summary>Anexa o JWT guardado no cookie de login a cada chamada à API.</summary>
 public sealed class BearerTokenHandler(IHttpContextAccessor accessor) : DelegatingHandler
 {

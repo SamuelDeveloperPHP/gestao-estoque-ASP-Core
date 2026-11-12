@@ -6,6 +6,7 @@ using System.Text.Json;
 namespace GestaoEstoque.Web.Services;
 
 public sealed record ProdutoDto(Guid Id, string Sku, string Nome, string Unidade, bool Ativo);
+public sealed record DepositoDto(Guid Id, string Codigo, string Nome, bool Ativo);
 public sealed record SaldoDto(Guid Id, Guid ProdutoId, Guid DepositoId, decimal Quantidade);
 public sealed record MovimentacaoDto(Guid MovimentacaoId, decimal SaldoApos);
 public sealed record LoginDto(string AccessToken, string TokenType, DateTime ExpiraEm, string Perfil);
@@ -57,6 +58,18 @@ public sealed class ApiClient(HttpClient http, ILogger<ApiClient> logger)
 
     public Task<ApiResult<object>> DesativarProdutoAsync(Guid id, CancellationToken ct) =>
         EnviarAsync<object>(new HttpRequestMessage(HttpMethod.Post, $"api/v1/produtos/{id}/desativar"), ct);
+
+    public Task<ApiResult<List<DepositoDto>>> ListarDepositosAsync(bool apenasAtivos, CancellationToken ct) =>
+        EnviarAsync<List<DepositoDto>>(new HttpRequestMessage(HttpMethod.Get, $"api/v1/depositos?apenasAtivos={apenasAtivos.ToString().ToLowerInvariant()}"), ct);
+
+    public Task<ApiResult<DepositoDto>> CriarDepositoAsync(string codigo, string nome, CancellationToken ct) =>
+        EnviarAsync<DepositoDto>(new HttpRequestMessage(HttpMethod.Post, "api/v1/depositos")
+        {
+            Content = JsonContent.Create(new { codigo, nome })
+        }, ct);
+
+    public Task<ApiResult<object>> DesativarDepositoAsync(Guid id, CancellationToken ct) =>
+        EnviarAsync<object>(new HttpRequestMessage(HttpMethod.Post, $"api/v1/depositos/{id}/desativar"), ct);
 
     public Task<ApiResult<List<SaldoDto>>> ListarSaldosAsync(Guid? produtoId, int skip, int take, CancellationToken ct)
     {

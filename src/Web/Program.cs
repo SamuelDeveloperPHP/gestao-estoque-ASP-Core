@@ -12,7 +12,6 @@ builder.Services.AddOptions<ApiOptions>()
     .Bind(builder.Configuration.GetSection(ApiOptions.Secao))
     .Validate(o => Uri.TryCreate(o.BaseUrl, UriKind.Absolute, out _), "Api:BaseUrl deve ser uma URL absoluta.")
     .ValidateOnStart();
-builder.Services.Configure<List<Deposito>>(builder.Configuration.GetSection("Depositos"));
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<BearerTokenHandler>();

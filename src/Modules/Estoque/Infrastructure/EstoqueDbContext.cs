@@ -9,6 +9,7 @@ public sealed class EstoqueDbContext(DbContextOptions<EstoqueDbContext> options)
 
     public DbSet<SaldoEstoque> Saldos => Set<SaldoEstoque>();
     public DbSet<MovimentacaoEstoque> Movimentacoes => Set<MovimentacaoEstoque>();
+    public DbSet<Deposito> Depositos => Set<Deposito>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -24,6 +25,17 @@ public sealed class EstoqueDbContext(DbContextOptions<EstoqueDbContext> options)
             b.ToTable(t => t.HasCheckConstraint("ck_saldos_quantidade_nao_negativa", "\"Quantidade\" >= 0"));
             // Concorrência otimista via coluna de sistema xmin do PostgreSQL.
             b.Property<uint>("xmin").IsRowVersion();
+        });
+
+        // Sem FK de saldos/movimentações para depósitos: a referência é por Id e validada no caso de uso.
+        modelBuilder.Entity<Deposito>(b =>
+        {
+            b.ToTable("depositos");
+            b.HasKey(x => x.Id);
+            b.Ignore(x => x.DomainEvents);
+            b.Property(x => x.Codigo).HasMaxLength(20).IsRequired();
+            b.Property(x => x.Nome).HasMaxLength(100).IsRequired();
+            b.HasIndex(x => x.Codigo).IsUnique();
         });
 
         modelBuilder.Entity<MovimentacaoEstoque>(b =>

@@ -9,10 +9,32 @@ namespace Estoque.Api.Tests;
 [Collection("api")]
 public class FluxoEstoqueTests(ApiFixture api)
 {
+    private const string Mov = "/api/v1/estoque/movimentacoes";
+
+    private async Task<Guid> CriarDepositoAsync(string token)
+    {
+        var codigo = "D" + Guid.NewGuid().ToString("N")[..10];
+        var resp = await api.Client.SendAsync(api.Req(HttpMethod.Post, "/api/v1/depositos", token, new { codigo, nome = "Depósito " + codigo }));
+        resp.StatusCode.Should().Be(HttpStatusCode.Created);
+        return (await resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+    }
+
+    private async Task<Guid> CriarProdutoAsync(string token, string prefixo = "P")
+    {
+        var resp = await api.Client.SendAsync(api.Req(HttpMethod.Post, "/api/v1/produtos", token,
+            new { sku = prefixo + "-" + Guid.NewGuid().ToString("N")[..8], nome = "Produto de teste" }));
+        resp.StatusCode.Should().Be(HttpStatusCode.Created);
+        return (await resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+    }
+
+    private Task<HttpResponseMessage> MovimentarAsync(string token, Guid produto, Guid deposito, string tipo, decimal qtd, string chave) =>
+        api.Client.SendAsync(api.Req(HttpMethod.Post, Mov, token,
+            new { produtoId = produto, depositoId = deposito, tipo, quantidade = qtd }, chave));
+
     [FactRequiresPostgres]
     public async Task Endpoints_protegidos_exigem_token()
     {
-        foreach (var url in new[] { "/api/v1/produtos", "/api/v1/estoque/saldos", "/api/v1/auth/me" })
+        foreach (var url in new[] { "/api/v1/produtos", "/api/v1/depositos", "/api/v1/estoque/saldos", "/api/v1/auth/me" })
         {
             var resp = await api.Client.GetAsync(url);
             resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized, url);
@@ -43,7 +65,7 @@ public class FluxoEstoqueTests(ApiFixture api)
     }
 
     [FactRequiresPostgres]
-    public async Task Operador_nao_cria_produto_mas_consegue_movimentar()
+    public async Task Operador_nao_cria_produto_nem_deposito_mas_consegue_movimentar()
     {
         var admin = await api.LoginAsync(ApiFixture.AdminEmail, ApiFixture.AdminSenha);
 
@@ -58,13 +80,24 @@ public class FluxoEstoqueTests(ApiFixture api)
         var emailOp = (await criarOperador.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("email").GetString()!;
         var operador = await api.LoginAsync(emailOp, "OperadorSenha2026");
 
-        var tentativa = await api.Client.SendAsync(api.Req(HttpMethod.Post, "/api/v1/produtos", operador,
-            new { sku = "OP-" + Guid.NewGuid().ToString("N")[..8], nome = "Proibido" }));
-        tentativa.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await api.Client.SendAsync(api.Req(HttpMethod.Post, "/api/v1/produtos", operador,
+            new { sku = "OP-" + Guid.NewGuid().ToString("N")[..8], nome = "Proibido" })))
+            .StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var semPermissao = await api.Client.SendAsync(api.Req(HttpMethod.Post, "/api/v1/usuarios", operador,
-            new { nome = "X", email = "x@x.com", senha = "SenhaQualquer2026", perfil = "Administrador" }));
-        semPermissao.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await api.Client.SendAsync(api.Req(HttpMethod.Post, "/api/v1/depositos", operador,
+            new { codigo = "PROIBIDO", nome = "Proibido" })))
+            .StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        (await api.Client.SendAsync(api.Req(HttpMethod.Post, "/api/v1/usuarios", operador,
+            new { nome = "X", email = "x@x.com", senha = "SenhaQualquer2026", perfil = "Administrador" })))
+            .StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        // Mas lê depósitos e movimenta estoque normalmente.
+        (await api.Client.SendAsync(api.Req(HttpMethod.Get, "/api/v1/depositos", operador))).StatusCode.Should().Be(HttpStatusCode.OK);
+        var produto = await CriarProdutoAsync(admin, "OPR");
+        var deposito = await CriarDepositoAsync(admin);
+        (await MovimentarAsync(operador, produto, deposito, "Entrada", 3, "op-" + Guid.NewGuid().ToString("N")))
+            .StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
     [FactRequiresPostgres]
@@ -78,24 +111,15 @@ public class FluxoEstoqueTests(ApiFixture api)
         criado.StatusCode.Should().Be(HttpStatusCode.Created);
         var produtoId = (await criado.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
 
-        var duplicado = await api.Client.SendAsync(api.Req(HttpMethod.Post, "/api/v1/produtos", token,
-            new { sku, nome = "Outro" }));
-        duplicado.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await api.Client.SendAsync(api.Req(HttpMethod.Post, "/api/v1/produtos", token, new { sku, nome = "Outro" })))
+            .StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
 
-        var deposito = Guid.NewGuid();
-        object Mov(string tipo, decimal qtd) => new { produtoId, depositoId = deposito, tipo, quantidade = qtd };
+        var deposito = await CriarDepositoAsync(token);
 
-        var entrada = await api.Client.SendAsync(api.Req(HttpMethod.Post, "/api/v1/estoque/movimentacoes", token, Mov("Entrada", 10), "e-" + sku));
-        entrada.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var repetida = await api.Client.SendAsync(api.Req(HttpMethod.Post, "/api/v1/estoque/movimentacoes", token, Mov("Entrada", 10), "e-" + sku));
-        repetida.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var saida = await api.Client.SendAsync(api.Req(HttpMethod.Post, "/api/v1/estoque/movimentacoes", token, Mov("Saida", 4), "s-" + sku));
-        saida.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var insuficiente = await api.Client.SendAsync(api.Req(HttpMethod.Post, "/api/v1/estoque/movimentacoes", token, Mov("Saida", 100), "x-" + sku));
-        insuficiente.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await MovimentarAsync(token, produtoId, deposito, "Entrada", 10, "e-" + sku)).StatusCode.Should().Be(HttpStatusCode.Created);
+        (await MovimentarAsync(token, produtoId, deposito, "Entrada", 10, "e-" + sku)).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await MovimentarAsync(token, produtoId, deposito, "Saida", 4, "s-" + sku)).StatusCode.Should().Be(HttpStatusCode.Created);
+        (await MovimentarAsync(token, produtoId, deposito, "Saida", 100, "x-" + sku)).StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
 
         var saldos = await api.Client.SendAsync(api.Req(HttpMethod.Get, $"/api/v1/estoque/saldos?produtoId={produtoId}", token));
         var lista = await saldos.Content.ReadFromJsonAsync<JsonElement>();
@@ -107,21 +131,70 @@ public class FluxoEstoqueTests(ApiFixture api)
     public async Task Movimentar_produto_inexistente_ou_inativo_e_rejeitado()
     {
         var token = await api.LoginAsync(ApiFixture.AdminEmail, ApiFixture.AdminSenha);
+        var deposito = await CriarDepositoAsync(token);
 
-        var inexistente = await api.Client.SendAsync(api.Req(HttpMethod.Post, "/api/v1/estoque/movimentacoes", token,
-            new { produtoId = Guid.NewGuid(), depositoId = Guid.NewGuid(), tipo = "Entrada", quantidade = 1 },
-            "i-" + Guid.NewGuid().ToString("N")));
-        inexistente.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await MovimentarAsync(token, Guid.NewGuid(), deposito, "Entrada", 1, "i-" + Guid.NewGuid().ToString("N")))
+            .StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
 
-        var criado = await api.Client.SendAsync(api.Req(HttpMethod.Post, "/api/v1/produtos", token,
-            new { sku = "INA-" + Guid.NewGuid().ToString("N")[..8], nome = "Descontinuado" }));
-        var id = (await criado.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        var id = await CriarProdutoAsync(token, "INA");
         (await api.Client.SendAsync(api.Req(HttpMethod.Post, $"/api/v1/produtos/{id}/desativar", token)))
             .StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var inativo = await api.Client.SendAsync(api.Req(HttpMethod.Post, "/api/v1/estoque/movimentacoes", token,
-            new { produtoId = id, depositoId = Guid.NewGuid(), tipo = "Entrada", quantidade = 1 },
-            "j-" + Guid.NewGuid().ToString("N")));
-        inativo.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await MovimentarAsync(token, id, deposito, "Entrada", 1, "j-" + Guid.NewGuid().ToString("N")))
+            .StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [FactRequiresPostgres]
+    public async Task Deposito_padrao_existe_e_codigo_duplicado_e_rejeitado()
+    {
+        var token = await api.LoginAsync(ApiFixture.AdminEmail, ApiFixture.AdminSenha);
+
+        var lista = await (await api.Client.SendAsync(api.Req(HttpMethod.Get, "/api/v1/depositos", token)))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        lista.EnumerateArray().Select(d => d.GetProperty("codigo").GetString()).Should().Contain("PRINC");
+
+        (await api.Client.SendAsync(api.Req(HttpMethod.Post, "/api/v1/depositos", token, new { codigo = "princ", nome = "Outro" })))
+            .StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [FactRequiresPostgres]
+    public async Task Movimentar_em_deposito_inexistente_ou_inativo_e_rejeitado()
+    {
+        var token = await api.LoginAsync(ApiFixture.AdminEmail, ApiFixture.AdminSenha);
+        var produto = await CriarProdutoAsync(token, "DEP");
+
+        (await MovimentarAsync(token, produto, Guid.NewGuid(), "Entrada", 1, "d1-" + Guid.NewGuid().ToString("N")))
+            .StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+
+        var deposito = await CriarDepositoAsync(token);
+        (await api.Client.SendAsync(api.Req(HttpMethod.Post, $"/api/v1/depositos/{deposito}/desativar", token)))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        (await MovimentarAsync(token, produto, deposito, "Entrada", 1, "d2-" + Guid.NewGuid().ToString("N")))
+            .StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+
+        var ativos = await (await api.Client.SendAsync(api.Req(HttpMethod.Get, "/api/v1/depositos?apenasAtivos=true", token)))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        ativos.EnumerateArray().Select(d => d.GetProperty("id").GetGuid()).Should().NotContain(deposito);
+    }
+
+    [FactRequiresPostgres]
+    public async Task Nao_desativa_deposito_com_saldo()
+    {
+        var token = await api.LoginAsync(ApiFixture.AdminEmail, ApiFixture.AdminSenha);
+        var produto = await CriarProdutoAsync(token, "SLD");
+        var deposito = await CriarDepositoAsync(token);
+
+        (await MovimentarAsync(token, produto, deposito, "Entrada", 5, "s1-" + Guid.NewGuid().ToString("N")))
+            .StatusCode.Should().Be(HttpStatusCode.Created);
+
+        (await api.Client.SendAsync(api.Req(HttpMethod.Post, $"/api/v1/depositos/{deposito}/desativar", token)))
+            .StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+
+        // Zerando o saldo, a desativação passa.
+        (await MovimentarAsync(token, produto, deposito, "Saida", 5, "s2-" + Guid.NewGuid().ToString("N")))
+            .StatusCode.Should().Be(HttpStatusCode.Created);
+        (await api.Client.SendAsync(api.Req(HttpMethod.Post, $"/api/v1/depositos/{deposito}/desativar", token)))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 }

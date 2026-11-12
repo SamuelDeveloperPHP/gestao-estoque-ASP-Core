@@ -100,3 +100,19 @@ public sealed class NovoUsuarioViewModel
     [Required]
     public string Perfil { get; set; } = "Operador";
 }
+
+public sealed class DepositosIndexViewModel
+{
+    public IReadOnlyList<DepositoDto> Itens { get; set; } = [];
+    public string? Erro { get; set; }
+}
+
+public sealed class NovoDepositoViewModel
+{
+    [Required(ErrorMessage = "Informe o código."), StringLength(20)]
+    [Display(Name = "Código")]
+    public string Codigo { get; set; } = "";
+
+    [Required(ErrorMessage = "Informe o nome."), StringLength(100)]
+    public string Nome { get; set; } = "";
+}

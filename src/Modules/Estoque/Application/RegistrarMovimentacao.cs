@@ -40,6 +40,9 @@ public sealed class RegistrarMovimentacaoHandler(EstoqueDbContext db, IVerificad
             if (!await produtos.ExisteAtivoAsync(cmd.ProdutoId, ct))
                 throw new DomainException("Produto inexistente ou inativo.");
 
+            if (!await db.Depositos.AsNoTracking().AnyAsync(d => d.Id == cmd.DepositoId && d.Ativo, ct))
+                throw new DomainException("Depósito inexistente ou inativo.");
+
             var saldo = await db.Saldos.FirstOrDefaultAsync(
                 s => s.ProdutoId == cmd.ProdutoId && s.DepositoId == cmd.DepositoId, ct);
             if (saldo is null)

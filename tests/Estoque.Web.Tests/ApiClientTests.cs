@@ -114,6 +114,22 @@ public class ApiClientTests
     }
 
     [Fact]
+    public async Task Depositos_lista_apenas_ativos_e_cria_com_codigo_e_nome()
+    {
+        var (api, stub) = Criar(r => r.Method == HttpMethod.Get
+            ? Json(HttpStatusCode.OK, """[{"id":"00000000-0000-0000-0000-000000000001","codigo":"PRINC","nome":"Principal","ativo":true}]""")
+            : Json(HttpStatusCode.Created, """{"id":"00000000-0000-0000-0000-000000000002","codigo":"CD1","nome":"CD 1","ativo":true}"""));
+
+        var lista = await api.ListarDepositosAsync(apenasAtivos: true, default);
+        stub.Ultima!.RequestUri!.Query.Should().Contain("apenasAtivos=true");
+        lista.Dados.Should().ContainSingle().Which.Codigo.Should().Be("PRINC");
+
+        var criado = await api.CriarDepositoAsync("CD1", "CD 1", default);
+        criado.Sucesso.Should().BeTrue();
+        (await stub.Ultima!.Content!.ReadAsStringAsync()).Should().Contain("\"codigo\":\"CD1\"");
+    }
+
+    [Fact]
     public async Task Busca_e_escapada_na_url()
     {
         var (api, stub) = Criar(_ => Json(HttpStatusCode.OK, "[]"));

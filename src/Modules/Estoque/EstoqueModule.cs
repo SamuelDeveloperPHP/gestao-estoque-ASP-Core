@@ -20,6 +20,7 @@ public static class EstoqueModule
             o.UseNpgsql(cs, n => n.MigrationsHistoryTable("__ef_migrations", EstoqueDbContext.Schema)));
 
         services.AddScoped<RegistrarMovimentacaoHandler>();
+        services.AddScoped<DepositoService>();
 
         return services;
     }
