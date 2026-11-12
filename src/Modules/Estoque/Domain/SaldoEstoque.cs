@@ -1,7 +1,9 @@
+using System.Text.Json.Serialization;
 using GestaoEstoque.BuildingBlocks;
 
 namespace GestaoEstoque.Modules.Estoque.Domain;
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum TipoMovimentacao
 {
     Entrada = 1,

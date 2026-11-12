@@ -17,7 +17,8 @@ public static class EstoqueEndpoints
 {
     public static IEndpointRouteBuilder MapEstoqueEndpoints(this IEndpointRouteBuilder app)
     {
-        var grupo = app.MapGroup("/api/v1/estoque").WithTags("Estoque");
+        // Qualquer usuário autenticado (operadores incluídos) pode movimentar e consultar.
+        var grupo = app.MapGroup("/api/v1/estoque").WithTags("Estoque").RequireAuthorization();
 
         grupo.MapPost("/movimentacoes", RegistrarAsync);
         grupo.MapGet("/saldos", ListarSaldosAsync);

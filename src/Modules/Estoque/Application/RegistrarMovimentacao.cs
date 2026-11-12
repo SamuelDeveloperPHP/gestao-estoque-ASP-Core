@@ -15,7 +15,7 @@ public sealed record RegistrarMovimentacaoCommand(
 
 public sealed record MovimentacaoResultado(Guid MovimentacaoId, decimal SaldoApos, bool Repetida);
 
-public sealed class RegistrarMovimentacaoHandler(EstoqueDbContext db)
+public sealed class RegistrarMovimentacaoHandler(EstoqueDbContext db, IVerificadorProduto produtos)
 {
     private const int MaxTentativas = 4;
 
@@ -36,6 +36,9 @@ public sealed class RegistrarMovimentacaoHandler(EstoqueDbContext db)
                     throw new DomainException("Chave de idempotência já usada com outro conteúdo.");
                 return new MovimentacaoResultado(existente.Id, existente.SaldoApos, Repetida: true);
             }
+
+            if (!await produtos.ExisteAtivoAsync(cmd.ProdutoId, ct))
+                throw new DomainException("Produto inexistente ou inativo.");
 
             var saldo = await db.Saldos.FirstOrDefaultAsync(
                 s => s.ProdutoId == cmd.ProdutoId && s.DepositoId == cmd.DepositoId, ct);

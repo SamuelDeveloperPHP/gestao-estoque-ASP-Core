@@ -1,4 +1,4 @@
-# Ambiente local. Copie .env.example para .env e defina POSTGRES_PASSWORD.
+# Ambiente local. Copie .env.example para .env e preencha os valores.
 services:
   postgres:
     image: postgres:16
@@ -23,7 +23,11 @@ services:
         condition: service_healthy
     environment:
       Database__MigrateOnStartup: "true" # só local; em produção use um Job
+      Swagger__Enabled: "true" # só local
       ConnectionStrings__Postgres: "Host=postgres;Database=gestao_estoque;Username=estoque;Password=${POSTGRES_PASSWORD}"
+      Jwt__Key: ${JWT_KEY:?defina JWT_KEY no .env (mínimo 32 caracteres)}
+      Identidade__AdminEmail: ${ADMIN_EMAIL:?defina ADMIN_EMAIL no .env}
+      Identidade__AdminSenha: ${ADMIN_PASSWORD:?defina ADMIN_PASSWORD no .env}
     ports:
       - "127.0.0.1:8080:8080"
 
