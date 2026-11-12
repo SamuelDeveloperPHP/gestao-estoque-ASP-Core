@@ -66,9 +66,13 @@ services:
       - api
     environment:
       Api__BaseUrl: "http://api:8080"
+      DataProtection__Path: /keys
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4317"
     ports:
       - "127.0.0.1:8081:8080"
+    volumes:
+      - webkeys:/keys
 
 volumes:
   pgdata:
+  webkeys:

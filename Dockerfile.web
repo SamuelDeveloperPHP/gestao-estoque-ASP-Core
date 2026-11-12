@@ -9,6 +9,8 @@ RUN dotnet publish src/Web/GestaoEstoque.Web.csproj -c Release -o /app --no-rest
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 COPY --from=build /app .
+# Pasta das chaves do Data Protection (monte um volume aqui para as sessões sobreviverem a reinícios).
+RUN mkdir -p /keys && chown app:app /keys
 USER app
 ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080

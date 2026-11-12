@@ -3,6 +3,7 @@ using System.Threading.RateLimiting;
 using GestaoEstoque.BuildingBlocks;
 using GestaoEstoque.Web.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Http.Resilience;
@@ -13,6 +14,13 @@ builder.Services.AddOptions<ApiOptions>()
     .Bind(builder.Configuration.GetSection(ApiOptions.Secao))
     .Validate(o => Uri.TryCreate(o.BaseUrl, UriKind.Absolute, out _), "Api:BaseUrl deve ser uma URL absoluta.")
     .ValidateOnStart();
+
+// Chaves que protegem o cookie de login. Sem persistir, todo reinício/réplica nova invalida as sessões.
+// Em produção/K8s monte um volume compartilhado (PVC) ou use um repositório externo (ex.: Redis/Blob + KMS).
+var chaves = builder.Configuration["DataProtection:Path"];
+var dataProtection = builder.Services.AddDataProtection().SetApplicationName("gestao-estoque-web");
+if (!string.IsNullOrWhiteSpace(chaves))
+    dataProtection.PersistKeysToFileSystem(new DirectoryInfo(chaves));
 
 builder.Services.AddObservabilidade(builder.Configuration, "gestao-estoque-web");
 builder.Services.AddHttpContextAccessor();
