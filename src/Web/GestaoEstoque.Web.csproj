@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <ItemGroup>
+    <ProjectReference Include="..\BuildingBlocks\GestaoEstoque.BuildingBlocks.csproj" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="8.10.0" />
   </ItemGroup>
 </Project>

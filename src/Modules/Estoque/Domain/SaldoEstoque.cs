@@ -81,6 +81,11 @@ public sealed class MovimentacaoEstoque : Entity
     public DateTime CriadoEm { get; private set; }
     public string ChaveIdempotencia { get; private set; } = default!;
 
+    /// <summary>Quem registrou (claim "sub"); nulo para movimentações anteriores à auditoria.</summary>
+    public Guid? UsuarioId { get; private set; }
+
+    public void DefinirAutor(Guid? usuarioId) => UsuarioId = usuarioId;
+
     public void DefinirChave(string chave)
     {
         if (string.IsNullOrWhiteSpace(chave) || chave.Length > 100)

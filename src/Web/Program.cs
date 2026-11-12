@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Threading.RateLimiting;
+using GestaoEstoque.BuildingBlocks;
 using GestaoEstoque.Web.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Localization;
@@ -13,6 +14,7 @@ builder.Services.AddOptions<ApiOptions>()
     .Validate(o => Uri.TryCreate(o.BaseUrl, UriKind.Absolute, out _), "Api:BaseUrl deve ser uma URL absoluta.")
     .ValidateOnStart();
 
+builder.Services.AddObservabilidade(builder.Configuration, "gestao-estoque-web");
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<BearerTokenHandler>();
 builder.Services.AddHttpClient<ApiClient>((sp, client) =>

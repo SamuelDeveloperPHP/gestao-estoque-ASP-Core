@@ -35,6 +35,12 @@ if (confiarEmForwardedFor)
     });
 }
 
+builder.Services.AddObservabilidade(builder.Configuration, "gestao-estoque-api");
+
+// Consumidor de exemplo dos eventos (só quando o RabbitMQ está configurado).
+if (!string.IsNullOrWhiteSpace(builder.Configuration["RabbitMq:Host"]))
+    builder.Services.AddHostedService<EventosEstoqueConsumer>();
+
 builder.Services.AddProblemDetails();
 builder.Services.AddResponseCompression();
 

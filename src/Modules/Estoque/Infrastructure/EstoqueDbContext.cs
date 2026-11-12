@@ -10,6 +10,7 @@ public sealed class EstoqueDbContext(DbContextOptions<EstoqueDbContext> options)
     public DbSet<SaldoEstoque> Saldos => Set<SaldoEstoque>();
     public DbSet<MovimentacaoEstoque> Movimentacoes => Set<MovimentacaoEstoque>();
     public DbSet<Deposito> Depositos => Set<Deposito>();
+    public DbSet<MensagemOutbox> Outbox => Set<MensagemOutbox>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,6 +37,16 @@ public sealed class EstoqueDbContext(DbContextOptions<EstoqueDbContext> options)
             b.Property(x => x.Codigo).HasMaxLength(20).IsRequired();
             b.Property(x => x.Nome).HasMaxLength(100).IsRequired();
             b.HasIndex(x => x.Codigo).IsUnique();
+        });
+
+        modelBuilder.Entity<MensagemOutbox>(b =>
+        {
+            b.ToTable("outbox");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.RotaChave).HasMaxLength(200).IsRequired();
+            b.Property(x => x.Payload).HasColumnType("jsonb").IsRequired();
+            // Índice parcial: só as pendentes, para o publicador varrer rápido.
+            b.HasIndex(x => x.CriadoEm).HasFilter("\"ProcessadoEm\" IS NULL");
         });
 
         modelBuilder.Entity<MovimentacaoEstoque>(b =>

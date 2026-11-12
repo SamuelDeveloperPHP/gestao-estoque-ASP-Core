@@ -50,6 +50,35 @@ namespace GestaoEstoque.Modules.Estoque.Infrastructure.Migrations
                     b.ToTable("depositos", "estoque");
                 });
 
+            modelBuilder.Entity("GestaoEstoque.Modules.Estoque.Domain.MensagemOutbox", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime?>("ProcessadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RotaChave")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CriadoEm")
+                        .HasFilter("\"ProcessadoEm\" IS NULL");
+
+                    b.ToTable("outbox", "estoque");
+                });
+
             modelBuilder.Entity("GestaoEstoque.Modules.Estoque.Domain.MovimentacaoEstoque", b =>
                 {
                     b.Property<Guid>("Id")
@@ -82,6 +111,9 @@ namespace GestaoEstoque.Modules.Estoque.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<Guid?>("UsuarioId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 

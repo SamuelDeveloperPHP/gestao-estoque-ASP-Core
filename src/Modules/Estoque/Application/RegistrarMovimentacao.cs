@@ -11,7 +11,8 @@ public sealed record RegistrarMovimentacaoCommand(
     Guid DepositoId,
     TipoMovimentacao Tipo,
     decimal Quantidade,
-    string ChaveIdempotencia);
+    string ChaveIdempotencia,
+    Guid? UsuarioId = null);
 
 public sealed record MovimentacaoResultado(Guid MovimentacaoId, decimal SaldoApos, bool Repetida);
 
@@ -53,7 +54,13 @@ public sealed class RegistrarMovimentacaoHandler(EstoqueDbContext db, IVerificad
 
             var movimentacao = saldo.Registrar(cmd.Tipo, cmd.Quantidade);
             movimentacao.DefinirChave(cmd.ChaveIdempotencia);
+            movimentacao.DefinirAutor(cmd.UsuarioId);
             db.Movimentacoes.Add(movimentacao);
+
+            // Outbox: gravado na mesma transação; um publicador em segundo plano envia ao broker.
+            db.Outbox.Add(MensagemOutbox.De(RotasEstoque.MovimentacaoRegistrada, new MovimentacaoRegistradaIntegracao(
+                movimentacao.Id, movimentacao.ProdutoId, movimentacao.DepositoId, movimentacao.Tipo,
+                movimentacao.Quantidade, movimentacao.SaldoApos, cmd.UsuarioId, movimentacao.CriadoEm)));
 
             try
             {

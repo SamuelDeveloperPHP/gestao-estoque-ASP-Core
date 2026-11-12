@@ -1,5 +1,25 @@
 # Ambiente local. Copie .env.example para .env e preencha os valores.
 services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    environment:
+      RABBITMQ_DEFAULT_USER: estoque
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?defina RABBITMQ_PASSWORD no .env}
+    ports:
+      - "127.0.0.1:15672:15672" # console de administração
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.60
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "127.0.0.1:16686:16686" # UI de traces
+
   postgres:
     image: postgres:16
     environment:
@@ -21,7 +41,13 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
+      RabbitMq__Host: rabbitmq
+      RabbitMq__User: estoque
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4317"
       Database__MigrateOnStartup: "true" # só local; em produção use um Job
       Swagger__Enabled: "true" # só local
       ConnectionStrings__Postgres: "Host=postgres;Database=gestao_estoque;Username=estoque;Password=${POSTGRES_PASSWORD}"
@@ -40,6 +66,7 @@ services:
       - api
     environment:
       Api__BaseUrl: "http://api:8080"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4317"
     ports:
       - "127.0.0.1:8081:8080"
 

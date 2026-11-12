@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using GestaoEstoque.Modules.Estoque.Application;
 using GestaoEstoque.Modules.Estoque.Domain;
 using GestaoEstoque.Modules.Estoque.Infrastructure;
@@ -32,6 +33,7 @@ public static class EstoqueEndpoints
         [FromHeader(Name = "Idempotency-Key")] string? chave,
         MovimentacaoRequest req,
         RegistrarMovimentacaoHandler handler,
+        ClaimsPrincipal usuario,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(chave))
@@ -43,7 +45,8 @@ public static class EstoqueEndpoints
             return Results.Problem(title: "Tipo de movimentação inválido.", statusCode: StatusCodes.Status400BadRequest);
 
         var resultado = await handler.HandleAsync(
-            new RegistrarMovimentacaoCommand(req.ProdutoId, req.DepositoId, req.Tipo, req.Quantidade, chave), ct);
+            new RegistrarMovimentacaoCommand(req.ProdutoId, req.DepositoId, req.Tipo, req.Quantidade, chave,
+                Guid.TryParse(usuario.FindFirstValue("sub"), out var autor) ? autor : null), ct);
 
         var corpo = new { movimentacaoId = resultado.MovimentacaoId, saldoApos = resultado.SaldoApos };
         return resultado.Repetida ? Results.Ok(corpo) : Results.Created($"/api/v1/estoque/movimentacoes/{resultado.MovimentacaoId}", corpo);

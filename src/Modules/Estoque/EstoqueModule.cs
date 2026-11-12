@@ -22,6 +22,14 @@ public static class EstoqueModule
         services.AddScoped<RegistrarMovimentacaoHandler>();
         services.AddScoped<DepositoService>();
 
+        // Mensageria é opcional: sem RabbitMq:Host o Outbox só acumula (nada é publicado).
+        services.Configure<RabbitMqOptions>(config.GetSection(RabbitMqOptions.Secao));
+        if (!string.IsNullOrWhiteSpace(config[$"{RabbitMqOptions.Secao}:Host"]))
+        {
+            services.AddSingleton<IMensageriaPublisher, RabbitMqPublisher>();
+            services.AddHostedService<OutboxPublisherService>();
+        }
+
         return services;
     }
 
