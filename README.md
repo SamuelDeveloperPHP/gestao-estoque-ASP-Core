@@ -35,8 +35,28 @@ curl http://localhost:8080/health/ready
 
 Testes: `dotnet test`
 
+## API (Estoque)
+
+- `POST /api/v1/estoque/movimentacoes` — cabeçalho `Idempotency-Key` obrigatório.
+  Corpo: `{ "produtoId": "...", "depositoId": "...", "tipo": "Entrada|Saida", "quantidade": 10 }`.
+  `201` na primeira vez, `200` ao repetir a mesma chave, `422` para regra de domínio
+  (saldo insuficiente, chave reutilizada com outro conteúdo), `400` sem a chave.
+- `GET /api/v1/estoque/saldos?produtoId=&depositoId=&skip=&take=`
+
+Cada movimentação grava o ledger (`estoque.movimentacoes`, só inserções) e atualiza o saldo
+na mesma transação. Concorrência: lock otimista (`xmin`) com retry, mais o check `Quantidade >= 0` no banco.
+
+## Migrations
+
+Local: `Database__MigrateOnStartup=true` (já no compose). Em produção, rode num Job do Kubernetes.
+Nova migration (precisa do `dotnet-ef`):
+
+```bash
+dotnet ef migrations add NomeDaMigration -p src/Modules/Estoque -s src/Api -o Infrastructure/Migrations
+```
+
 ## Próximas etapas
 
-1. Migrations do EF Core por módulo e endpoints de movimentação (com `Idempotency-Key`).
-2. Autenticação JWT/OIDC no módulo Identidade.
+1. Autenticação JWT/OIDC no módulo Identidade e `[Authorize]` nos endpoints (hoje abertos).
+2. Persistência do Catálogo (validar `produtoId`) e testes de integração com Testcontainers no CI.
 3. Outbox + mensageria; OpenTelemetry; UI (template Velzon) consumindo a API.

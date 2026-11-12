@@ -37,7 +37,7 @@ public sealed class SaldoEstoque : Entity
     public Guid DepositoId { get; private set; }
     public decimal Quantidade { get; private set; }
 
-    public void Registrar(TipoMovimentacao tipo, decimal quantidade)
+    public MovimentacaoEstoque Registrar(TipoMovimentacao tipo, decimal quantidade)
     {
         if (quantidade <= 0) throw new DomainException("A quantidade deve ser maior que zero.");
 
@@ -52,5 +52,37 @@ public sealed class SaldoEstoque : Entity
 
         Quantidade = novoSaldo;
         Raise(new MovimentacaoRegistrada(ProdutoId, DepositoId, tipo, quantidade, novoSaldo));
+        return new MovimentacaoEstoque(ProdutoId, DepositoId, tipo, quantidade, novoSaldo);
+    }
+}
+
+/// <summary>Registro imutável (ledger) de cada movimentação; só recebe inserções.</summary>
+public sealed class MovimentacaoEstoque : Entity
+{
+    private MovimentacaoEstoque() { } // EF Core
+
+    internal MovimentacaoEstoque(Guid produtoId, Guid depositoId, TipoMovimentacao tipo, decimal quantidade, decimal saldoApos)
+    {
+        ProdutoId = produtoId;
+        DepositoId = depositoId;
+        Tipo = tipo;
+        Quantidade = quantidade;
+        SaldoApos = saldoApos;
+        CriadoEm = DateTime.UtcNow;
+    }
+
+    public Guid ProdutoId { get; private set; }
+    public Guid DepositoId { get; private set; }
+    public TipoMovimentacao Tipo { get; private set; }
+    public decimal Quantidade { get; private set; }
+    public decimal SaldoApos { get; private set; }
+    public DateTime CriadoEm { get; private set; }
+    public string ChaveIdempotencia { get; private set; } = default!;
+
+    public void DefinirChave(string chave)
+    {
+        if (string.IsNullOrWhiteSpace(chave) || chave.Length > 100)
+            throw new DomainException("Chave de idempotência inválida (1 a 100 caracteres).");
+        ChaveIdempotencia = chave;
     }
 }

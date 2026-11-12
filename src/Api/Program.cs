@@ -1,6 +1,7 @@
 using GestaoEstoque.BuildingBlocks;
 using GestaoEstoque.Modules.Catalogo;
 using GestaoEstoque.Modules.Estoque;
+using GestaoEstoque.Modules.Estoque.Api;
 using GestaoEstoque.Modules.Identidade;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -18,16 +19,34 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
-// Regras de domínio violadas viram 422; qualquer outra exceção, 500 sem vazar detalhes.
+// Qualquer outra exceção: 500 sem vazar detalhes (e com log de erro).
 app.UseExceptionHandler(handler => handler.Run(async ctx =>
 {
-    var ex = ctx.Features.Get<IExceptionHandlerFeature>()?.Error;
-    var (status, titulo) = ex is DomainException
-        ? (StatusCodes.Status422UnprocessableEntity, ex.Message)
-        : (StatusCodes.Status500InternalServerError, "Erro interno.");
-    ctx.Response.StatusCode = status;
-    await ctx.Response.WriteAsJsonAsync(new ProblemDetails { Status = status, Title = titulo });
+    ctx.Response.StatusCode = StatusCodes.Status500InternalServerError;
+    await ctx.Response.WriteAsJsonAsync(new ProblemDetails
+    {
+        Status = StatusCodes.Status500InternalServerError,
+        Title = "Erro interno."
+    });
 }));
+
+// Regra de domínio violada é erro do cliente: vira 422 sem poluir o log com stack trace.
+app.Use(async (ctx, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (DomainException ex)
+    {
+        ctx.Response.StatusCode = StatusCodes.Status422UnprocessableEntity;
+        await ctx.Response.WriteAsJsonAsync(new ProblemDetails
+        {
+            Status = StatusCodes.Status422UnprocessableEntity,
+            Title = ex.Message
+        });
+    }
+});
 
 app.UseHttpsRedirection();
 
@@ -36,6 +55,13 @@ app.MapHealthChecks("/health/live", new() { Predicate = _ => false });
 app.MapHealthChecks("/health/ready", new() { Predicate = r => r.Tags.Contains("ready") });
 
 app.MapGet("/api/v1", () => Results.Ok(new { servico = "gestao-estoque", versao = "v1" }));
+app.MapEstoqueEndpoints();
+
+// Em produção com várias réplicas, prefira rodar as migrations em um Job do K8s.
+if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
+{
+    await app.Services.MigrarEstoqueAsync();
+}
 
 app.Run();
 

@@ -22,6 +22,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      Database__MigrateOnStartup: "true" # só local; em produção use um Job
       ConnectionStrings__Postgres: "Host=postgres;Database=gestao_estoque;Username=estoque;Password=${POSTGRES_PASSWORD}"
     ports:
       - "127.0.0.1:8080:8080"

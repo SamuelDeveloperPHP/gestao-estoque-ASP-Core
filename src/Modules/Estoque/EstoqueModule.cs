@@ -1,7 +1,10 @@
+using GestaoEstoque.Modules.Estoque.Application;
 using GestaoEstoque.Modules.Estoque.Infrastructure;
+using Microsoft.AspNetCore.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System.Text.Json.Serialization;
 
 namespace GestaoEstoque.Modules.Estoque;
 
@@ -18,6 +21,18 @@ public static class EstoqueModule
         services.AddDbContext<EstoqueDbContext>(o =>
             o.UseNpgsql(cs, n => n.MigrationsHistoryTable("__ef_migrations", EstoqueDbContext.Schema)));
 
+        services.AddScoped<RegistrarMovimentacaoHandler>();
+
+        // Enums como texto na API ("Entrada", "Saida").
+        services.Configure<JsonOptions>(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
         return services;
+    }
+
+    public static async Task MigrarEstoqueAsync(this IServiceProvider provider, CancellationToken ct = default)
+    {
+        using var scope = provider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<EstoqueDbContext>();
+        await db.Database.MigrateAsync(ct);
     }
 }
