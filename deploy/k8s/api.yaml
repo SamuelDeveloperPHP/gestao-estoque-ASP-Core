@@ -14,7 +14,7 @@ spec:
         runAsNonRoot: true
       containers:
         - name: api
-          image: gestao-estoque:latest # trocar pela tag do registry
+          image: gestao-estoque-api:latest # trocar pela tag do registry
           ports:
             - containerPort: 8080
           env:
@@ -24,18 +24,34 @@ spec:
             - name: Jwt__Key
               valueFrom:
                 secretKeyRef: { name: gestao-estoque-auth, key: jwt-key }
-            - name: ASPNETCORE_HTTP_PORTS
-              value: "8080"
+            - name: RabbitMq__Host
+              value: rabbitmq
+            - name: RabbitMq__User
+              valueFrom:
+                secretKeyRef: { name: gestao-estoque-rabbitmq, key: user }
+            - name: RabbitMq__Password
+              valueFrom:
+                secretKeyRef: { name: gestao-estoque-rabbitmq, key: password }
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector:4317
+            # Só habilite se o ÚNICO chamador direto da API for o Web (que repassa o IP real do usuário).
+            - name: ForwardedHeaders__Enabled
+              value: "true"
           resources:
             requests: { cpu: 100m, memory: 128Mi }
             limits: { cpu: "1", memory: 512Mi }
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
           livenessProbe:
             httpGet: { path: /health/live, port: 8080 }
           readinessProbe:
             httpGet: { path: /health/ready, port: 8080 }
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

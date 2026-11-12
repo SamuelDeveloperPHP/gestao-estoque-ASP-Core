@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Pré-requisitos: os Secrets gestao-estoque-db, gestao-estoque-auth e gestao-estoque-rabbitmq
+# (veja secrets.exemplo.yaml), PostgreSQL, RabbitMQ e um coletor OTLP acessíveis no cluster.
+# Ordem sugerida: kubectl apply -f migrate-job.yaml && kubectl wait --for=condition=complete job/gestao-estoque-migrate
+#                 && kubectl apply -k .   (o Job fica fora do kustomize de propósito)
+resources:
+  - api.yaml
+  - web.yaml

@@ -1,0 +1,97 @@
+# Chaves do Data Protection (cookie de login). Com 2+ réplicas, todas precisam ler as MESMAS chaves:
+# use uma StorageClass ReadWriteMany (NFS/Azure Files/EFS) ou troque por um repositório externo.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gestao-estoque-web-keys
+spec:
+  accessModes: [ReadWriteMany]
+  resources:
+    requests:
+      storage: 100Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gestao-estoque-web
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: gestao-estoque-web }
+  template:
+    metadata:
+      labels: { app: gestao-estoque-web }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 1654 # grupo do usuário "app" da imagem, para escrever em /keys
+      containers:
+        - name: web
+          image: gestao-estoque-web:latest # trocar pela tag do registry
+          ports:
+            - containerPort: 8080
+          env:
+            - name: Api__BaseUrl
+              value: http://gestao-estoque-api
+            - name: DataProtection__Path
+              value: /keys
+            # O TLS termina no ingress: o cookie de login só deve trafegar por HTTPS.
+            - name: Cookie__SecurePolicy
+              value: Always
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector:4317
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 384Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - { name: keys, mountPath: /keys }
+            - { name: tmp, mountPath: /tmp }
+          livenessProbe:
+            httpGet: { path: /health/live, port: 8080 }
+          readinessProbe:
+            httpGet: { path: /health/live, port: 8080 }
+      volumes:
+        - name: keys
+          persistentVolumeClaim:
+            claimName: gestao-estoque-web-keys
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gestao-estoque-web
+spec:
+  selector: { app: gestao-estoque-web }
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: gestao-estoque-web
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: gestao-estoque-web }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: gestao-estoque-web
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: gestao-estoque-web
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 70 }

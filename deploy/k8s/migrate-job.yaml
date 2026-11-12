@@ -1,0 +1,43 @@
+# Aplica as migrations (Identidade, Catálogo, Estoque) e o administrador inicial, e termina.
+# Rode ANTES de subir/atualizar o Deployment da API (ex.: hook PreSync no ArgoCD, ou `kubectl apply` + `kubectl wait`).
+# Para reexecutar, apague o Job anterior ou use um nome novo por versão.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gestao-estoque-migrate
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: migrate
+          image: gestao-estoque-api:latest # a MESMA imagem/tag da API
+          args: ["--migrate-only"]
+          env:
+            - name: ConnectionStrings__Postgres
+              valueFrom:
+                secretKeyRef: { name: gestao-estoque-db, key: connection-string }
+            - name: Jwt__Key # exigido pela validação de configuração da API, embora o Job não emita tokens
+              valueFrom:
+                secretKeyRef: { name: gestao-estoque-auth, key: jwt-key }
+            - name: Identidade__AdminEmail
+              valueFrom:
+                secretKeyRef: { name: gestao-estoque-auth, key: admin-email, optional: true }
+            - name: Identidade__AdminSenha
+              valueFrom:
+                secretKeyRef: { name: gestao-estoque-auth, key: admin-password, optional: true }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 384Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}

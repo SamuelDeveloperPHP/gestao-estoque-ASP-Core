@@ -144,8 +144,10 @@ app.MapIdentidadeEndpoints();
 app.MapCatalogoEndpoints();
 app.MapEstoqueEndpoints();
 
-// Em produção com várias réplicas, prefira rodar as migrations em um Job do K8s.
-if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
+// Local: Database__MigrateOnStartup=true. Produção (várias réplicas): rode um Job com "--migrate-only",
+// que aplica as migrations, cria o administrador inicial e encerra sem subir o servidor.
+var somenteMigrar = args.Contains("--migrate-only");
+if (somenteMigrar || app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
 {
     await app.Services.MigrarIdentidadeAsync();
     await app.Services.MigrarCatalogoAsync();
@@ -153,6 +155,8 @@ if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
 }
 
 await app.Services.SemearAdministradorAsync(app.Configuration);
+
+if (somenteMigrar) return;
 
 app.Run();
 
