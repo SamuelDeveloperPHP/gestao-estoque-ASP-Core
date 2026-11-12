@@ -130,6 +130,21 @@ public class ApiClientTests
     }
 
     [Fact]
+    public async Task Total_vem_do_cabecalho_X_Total_Count()
+    {
+        var (api, _) = Criar(_ =>
+        {
+            var resp = Json(HttpStatusCode.OK, "[]");
+            resp.Headers.Add("X-Total-Count", "137");
+            return resp;
+        });
+
+        var r = await api.ListarProdutosAsync(null, 0, 20, default);
+
+        r.Total.Should().Be(137);
+    }
+
+    [Fact]
     public async Task Busca_e_escapada_na_url()
     {
         var (api, stub) = Criar(_ => Json(HttpStatusCode.OK, "[]"));

@@ -67,7 +67,7 @@
         </div>
 
         <div class="d-flex justify-content-between align-items-center mt-3">
-            <span class="text-muted">Página @Model.Pagina</span>
+            <span class="text-muted">Página @Model.Pagina@(Model.TotalPaginas > 0 ? $" de {Model.TotalPaginas}" : "")@(Model.Total is int total ? $" · {total} produto(s)" : "")</span>
             <div class="btn-group">
                 @if (Model.Pagina > 1)
                 {

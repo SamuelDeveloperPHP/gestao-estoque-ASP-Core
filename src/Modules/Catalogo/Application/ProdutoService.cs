@@ -40,7 +40,7 @@ public sealed class ProdutoService(CatalogoDbContext db) : IConsultaProdutos
     public Task<Produto?> ObterAsync(Guid id, CancellationToken ct) =>
         db.Produtos.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, ct);
 
-    public async Task<IReadOnlyList<Produto>> ListarAsync(string? busca, int skip, int take, CancellationToken ct)
+    private IQueryable<Produto> Filtrar(string? busca)
     {
         var consulta = db.Produtos.AsNoTracking().AsQueryable();
 
@@ -51,7 +51,14 @@ public sealed class ProdutoService(CatalogoDbContext db) : IConsultaProdutos
             consulta = consulta.Where(p => EF.Functions.ILike(p.Nome, padrao) || EF.Functions.ILike(p.Sku, padrao));
         }
 
-        return await consulta
+        return consulta;
+    }
+
+    public Task<int> ContarAsync(string? busca, CancellationToken ct) => Filtrar(busca).CountAsync(ct);
+
+    public async Task<IReadOnlyList<Produto>> ListarAsync(string? busca, int skip, int take, CancellationToken ct)
+    {
+        return await Filtrar(busca)
             .OrderBy(p => p.Sku)
             .Skip(Math.Max(skip, 0))
             .Take(Math.Clamp(take, 1, 200))

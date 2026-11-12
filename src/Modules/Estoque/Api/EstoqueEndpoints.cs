@@ -55,6 +55,7 @@ public static class EstoqueEndpoints
     // Paginação simples (skip/take, máx. 200). Cursor/keyset entra quando o volume exigir.
     private static async Task<IResult> ListarSaldosAsync(
         EstoqueDbContext db,
+        HttpResponse resposta,
         Guid? produtoId,
         Guid? depositoId,
         int? skip,
@@ -66,6 +67,8 @@ public static class EstoqueEndpoints
         var consulta = db.Saldos.AsNoTracking().AsQueryable();
         if (produtoId is not null) consulta = consulta.Where(s => s.ProdutoId == produtoId);
         if (depositoId is not null) consulta = consulta.Where(s => s.DepositoId == depositoId);
+
+        resposta.Headers["X-Total-Count"] = (await consulta.CountAsync(ct)).ToString();
 
         var itens = await consulta
             .OrderBy(s => s.ProdutoId).ThenBy(s => s.DepositoId)

@@ -32,6 +32,9 @@ public sealed class ApiFixture : IAsyncLifetime
 
     public HttpClient Client { get; private set; } = default!;
 
+    /// <summary>Connection string do banco temporário desta execução (para asserções diretas no banco).</summary>
+    public string ConnectionString { get; private set; } = "";
+
     public async Task InitializeAsync()
     {
         if (string.IsNullOrWhiteSpace(_adminConnection)) return;
@@ -44,6 +47,7 @@ public sealed class ApiFixture : IAsyncLifetime
         }
 
         var cs = new NpgsqlConnectionStringBuilder(_adminConnection) { Database = _database }.ConnectionString;
+        ConnectionString = cs;
 
         // Variáveis de ambiente: lidas na construção do host, antes do Program registrar os módulos.
         Environment.SetEnvironmentVariable("ConnectionStrings__Postgres", cs);

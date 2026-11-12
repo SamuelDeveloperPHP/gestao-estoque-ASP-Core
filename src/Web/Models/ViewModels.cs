@@ -22,8 +22,8 @@ public sealed class HomeViewModel
 {
     public string Nome { get; set; } = "";
     public string Perfil { get; set; } = "";
-    public string? TotalProdutos { get; set; }
-    public string? TotalSaldos { get; set; }
+    public int? TotalProdutos { get; set; }
+    public int? TotalSaldos { get; set; }
     public string? Erro { get; set; }
 }
 
@@ -33,6 +33,8 @@ public sealed class ProdutosIndexViewModel
     public string? Busca { get; set; }
     public int Pagina { get; set; } = 1;
     public bool TemProxima { get; set; }
+    public int? Total { get; set; }
+    public int TotalPaginas { get; set; }
     public string? Erro { get; set; }
 }
 

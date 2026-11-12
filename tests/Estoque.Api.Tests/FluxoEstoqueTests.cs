@@ -179,6 +179,46 @@ public class FluxoEstoqueTests(ApiFixture api)
     }
 
     [FactRequiresPostgres]
+    public async Task Listagens_informam_o_total_no_cabecalho_independente_da_pagina()
+    {
+        var token = await api.LoginAsync(ApiFixture.AdminEmail, ApiFixture.AdminSenha);
+        var prefixo = "TOT" + Guid.NewGuid().ToString("N")[..6];
+        foreach (var i in Enumerable.Range(1, 3))
+        {
+            (await api.Client.SendAsync(api.Req(HttpMethod.Post, "/api/v1/produtos", token,
+                new { sku = $"{prefixo}-{i}", nome = "Item de contagem" }))).StatusCode.Should().Be(HttpStatusCode.Created);
+        }
+
+        // take=1 devolve 1 item, mas o total reflete a busca inteira.
+        var resp = await api.Client.SendAsync(api.Req(HttpMethod.Get, $"/api/v1/produtos?q={prefixo}&take=1", token));
+        (await resp.Content.ReadFromJsonAsync<JsonElement>()).GetArrayLength().Should().Be(1);
+        resp.Headers.GetValues("X-Total-Count").Should().ContainSingle("3");
+
+        var saldos = await api.Client.SendAsync(api.Req(HttpMethod.Get, "/api/v1/estoque/saldos?take=1", token));
+        saldos.Headers.Contains("X-Total-Count").Should().BeTrue();
+    }
+
+    [FactRequiresPostgres]
+    public async Task Autor_da_movimentacao_e_registrado_no_ledger()
+    {
+        var token = await api.LoginAsync(ApiFixture.AdminEmail, ApiFixture.AdminSenha);
+        var me = await (await api.Client.SendAsync(api.Req(HttpMethod.Get, "/api/v1/auth/me", token)))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        var produto = await CriarProdutoAsync(token, "AUT");
+        var deposito = await CriarDepositoAsync(token);
+
+        (await MovimentarAsync(token, produto, deposito, "Entrada", 1, "aut-" + Guid.NewGuid().ToString("N")))
+            .StatusCode.Should().Be(HttpStatusCode.Created);
+
+        await using var conn = new Npgsql.NpgsqlConnection(api.ConnectionString);
+        await conn.OpenAsync();
+        await using var cmd = new Npgsql.NpgsqlCommand(
+            "SELECT \"UsuarioId\" FROM estoque.movimentacoes WHERE \"ProdutoId\" = @p", conn);
+        cmd.Parameters.AddWithValue("p", produto);
+        ((Guid)(await cmd.ExecuteScalarAsync())!).Should().Be(Guid.Parse(me.GetProperty("id").GetString()!));
+    }
+
+    [FactRequiresPostgres]
     public async Task Nao_desativa_deposito_com_saldo()
     {
         var token = await api.LoginAsync(ApiFixture.AdminEmail, ApiFixture.AdminSenha);

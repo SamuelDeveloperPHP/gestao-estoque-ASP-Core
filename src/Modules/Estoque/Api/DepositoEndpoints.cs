@@ -28,8 +28,13 @@ public static class DepositoEndpoints
         return app;
     }
 
-    private static async Task<IResult> ListarAsync(DepositoService servico, bool? apenasAtivos, CancellationToken ct) =>
-        Results.Ok((await servico.ListarAsync(apenasAtivos ?? false, ct)).Select(DepositoResponse.De));
+    private static async Task<IResult> ListarAsync(
+        DepositoService servico, HttpResponse resposta, bool? apenasAtivos, CancellationToken ct)
+    {
+        var itens = await servico.ListarAsync(apenasAtivos ?? false, ct);
+        resposta.Headers["X-Total-Count"] = itens.Count.ToString();
+        return Results.Ok(itens.Select(DepositoResponse.De));
+    }
 
     private static async Task<IResult> CriarAsync(CriarDepositoRequest req, DepositoService servico, CancellationToken ct)
     {

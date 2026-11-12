@@ -18,7 +18,8 @@ public record ApiResult(int Status, string? Erro)
     public bool Sucesso => Status is >= 200 and < 300;
 }
 
-public sealed record ApiResult<T>(int Status, string? Erro, T? Dados) : ApiResult(Status, Erro);
+/// <param name="Total">Total de registros da consulta (cabeçalho X-Total-Count), quando a API informa.</param>
+public sealed record ApiResult<T>(int Status, string? Erro, T? Dados, int? Total = null) : ApiResult(Status, Erro);
 
 /// <summary>O token expirou ou foi revogado: a sessão web deve ser encerrada.</summary>
 public sealed class SessaoExpiradaException : Exception;
@@ -122,7 +123,9 @@ public sealed class ApiClient(HttpClient http, ILogger<ApiClient> logger)
                     return new ApiResult<T>(status, null, default);
 
                 var dados = await resp.Content.ReadFromJsonAsync<T>(Json, ct);
-                return new ApiResult<T>(status, null, dados);
+                int? total = resp.Headers.TryGetValues("X-Total-Count", out var valores)
+                             && int.TryParse(valores.FirstOrDefault(), out var n) ? n : null;
+                return new ApiResult<T>(status, null, dados, total);
             }
 
             return new ApiResult<T>(status, await ExtrairErroAsync(resp, ct), default);

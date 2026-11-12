@@ -21,6 +21,8 @@ public sealed class ProdutosController(ApiClient api) : Controller
         {
             Itens = itens.Take(PorPagina).ToList(),
             TemProxima = itens.Count > PorPagina,
+            Total = resultado.Total,
+            TotalPaginas = resultado.Total is int t ? Math.Max(1, (int)Math.Ceiling(t / (double)PorPagina)) : 0,
             Busca = busca,
             Pagina = pagina,
             Erro = resultado.Sucesso ? null : resultado.Erro

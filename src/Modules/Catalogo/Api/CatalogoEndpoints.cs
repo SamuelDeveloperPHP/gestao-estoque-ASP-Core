@@ -30,9 +30,10 @@ public static class CatalogoEndpoints
     }
 
     private static async Task<IResult> ListarAsync(
-        ProdutoService servico, string? q, int? skip, int? take, CancellationToken ct)
+        ProdutoService servico, HttpResponse resposta, string? q, int? skip, int? take, CancellationToken ct)
     {
         var itens = await servico.ListarAsync(q, skip ?? 0, take ?? 50, ct);
+        resposta.Headers["X-Total-Count"] = (await servico.ContarAsync(q, ct)).ToString();
         return Results.Ok(itens.Select(ProdutoResponse.De));
     }
 

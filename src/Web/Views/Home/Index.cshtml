@@ -14,7 +14,7 @@
         <div class="card card-animate">
             <div class="card-body">
                 <p class="fw-medium text-muted mb-0">Produtos cadastrados</p>
-                <h2 class="mt-4 ff-secondary fw-semibold">@(Model.TotalProdutos ?? "—")</h2>
+                <h2 class="mt-4 ff-secondary fw-semibold">@(Model.TotalProdutos?.ToString() ?? "—")</h2>
                 <a asp-controller="Produtos" asp-action="Index" class="text-decoration-underline">Ver produtos</a>
             </div>
         </div>
@@ -23,7 +23,7 @@
         <div class="card card-animate">
             <div class="card-body">
                 <p class="fw-medium text-muted mb-0">Saldos em estoque (produto × depósito)</p>
-                <h2 class="mt-4 ff-secondary fw-semibold">@(Model.TotalSaldos ?? "—")</h2>
+                <h2 class="mt-4 ff-secondary fw-semibold">@(Model.TotalSaldos?.ToString() ?? "—")</h2>
                 <a asp-controller="Estoque" asp-action="Index" class="text-decoration-underline">Ver estoque</a>
             </div>
         </div>
